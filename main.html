@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RichTextEditor</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <style lang="scss">
+        /* 音乐播放器样式 - 墨绿色系 */
+        .player-container {
+            margin: 30px auto;
+            width: 800px;
+            background: #f8f8f2; 
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(47, 79, 79, 0.15); 
+            padding: 24px;
+            border: 1px solid #d1d9c7; 
+        }
+
+        .current {
+            background-color: #2d545e; 
+            color: #e1b16a;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 0 0 1px #e1b16a; 
+        }
+
+        .lyric-container {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #c5d0c5; 
+            border-radius: 6px;
+            padding: 16px;
+            margin: 16px 0;
+            background: #f0f2eb; 
+            line-height: 1.8;
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        /* 富文本编辑器样式 */
+        .editor-container {
+            margin: 30px auto;
+            width: 800px;
+            background: #f8f8f2; 
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(47, 79, 79, 0.15);
+            padding: 24px;
+            border: 1px solid #d1d9c7;
+        }
+
+        /* 工具栏样式 */
+        .navigation {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #d1d9c7;
+        }
+
+        .navigation button {
+            cursor: pointer;
+            padding: 6px 12px;
+            background: #e9edc9; 
+            border: 1px solid #a4b494; 
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            color: #2d545e; 
+            font-size: 14px;
+        }
+
+        .navigation button:hover {
+            background: #d1d9c7; 
+            border-color: #2d545e;
+        }
+
+        select {
+            padding: 6px 10px;
+            border: 1px solid #a4b494;
+            border-radius: 4px;
+            background: #e9edc9;
+            color: #2d545e;
+            font-size: 14px;
+        }
+
+        input[type="color"] {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #2d545e;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* 编辑区样式*/
+        .editor-row {
+            display: flex;
+            width: 100%;
+            height: 320px;
+            gap: 20px;
+        }
+
+        .editor, .comments {
+            flex: 1;
+            border: 1px solid #c5d0c5;
+            border-radius: 6px;
+            padding: 16px;
+            overflow-y: auto;
+            background: #fff;
+            line-height: 1.6;
+            font-size: 15px;
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        .editor:focus {
+            outline: none;
+            border-color: #2d545e;
+            box-shadow: 0 0 0 2px rgba(45, 84, 94, 0.2);
+        }
+
+        /* 评论样式 */
+        .comment-item {
+            margin-bottom: 16px;
+            padding: 14px;
+            border-radius: 4px;
+            background: #f0f2eb;
+            transition: all 0.3s ease;
+            border-left: 3px solid #2d545e;
+        }
+
+        .comment-item:hover {
+            background: #e9edc9;
+        }
+
+        .comment-time {
+            color: #688b6e; 
+            font-size: 0.85em;
+            margin-right: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .comment-time:hover {
+            color: #2d545e;
+            text-decoration: underline;
+        }
+
+        .comment-user {
+            font-weight: 600;
+            color: #2d545e;
+        }
+
+        .comment-content {
+            margin-top: 8px;
+            color: #555;
+        }
+
+        .empty-comment {
+            color: #a4b494;
+            text-align: center;
+            padding: 40px 0;
+            font-style: italic;
+        }
+
+        /* 评论滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f0f2eb;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #a4b494;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #688b6e;
+        }
+
+        input[type="color"] {
+            width: 30px;
+            height: 30px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 音乐播放器部分 -->
+        <div class="player-container">
+            <video controls :src="VideoFrame" type="video/mp4" ref="media"></video>
+            <div class="lyric-container">
+                <div v-for="(lyric, index) in lyrics" 
+                     :key="index"
+                     :class="{'current': currentLyricIndex === index}"
+                     @click="jumpToLyric(lyric.startTime)"
+                     :data-be="lyric.startTime + ' ' + lyric.endTime">
+                    {{ lyric.text }}
+                </div>
+            </div>
+        </div>
+
+
+    <div class = "editor-container">
+    <!--button area-->
+        <div class = "navigation">
+            <button @click="execCommand('bold')"><b>B</b></button>
+            <button @click="execCommand('italic')"><i>I</i></button>
+            <button @click="execCommand('underline')"><u>U</u></button>
+            <button @click="execCommand('superscript')">X<sup>2</sup></button>
+            <button @click="execCommand('subscript')">X<sub>2</sub></button>
+            <button @click="execCommand('strikethrough')"><del>U</del></button>
+            <button @click="execCommand('removeFormat')">R</button>
+            <button @click="execCommand('selectAll')">S</button>
+
+            <select v-model="selectFont" @change="changeFont">
+                <option value="">choose Font</option>
+                <option v-for="font in fontOptions" :value="font">{{font}}</option>
+            </select>
+
+            <input type="color" v-model="customColor" @change="applyCustomColor">
+            <button @click="insertTimestamp">插入时间戳</button>
+            <button @click="submitComment" style="margin-left: auto;">提交评论</button>
+        </div>
+
+        <div class="editor-row">
+                <!-- 评论输入框 -->
+                <div class="editor" contenteditable="true" @input="updateContent" ref="editor"></div>
+                
+                <!-- 评论展示区 -->
+                <div class="comments">
+                    <div v-if="comments.length === 0" class="empty-comment">
+                        暂无评论，快来发表第一条评论吧！
+                    </div>
+                    <div v-else>
+                        <div v-for="(comment, index) in comments" :key="index" class="comment-item">
+                            <div>
+                                <span class="comment-time" @click="jumpToTime(comment.time)">
+                                    {{ formatTime(comment.time) }}
+                                </span>
+                            </div>
+                            <div class="comment-content" v-html="comment.content"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+   
+    <script>
+        new Vue({
+            el:'#app',
+            data(){        
+                return{
+                    VideoFrame: 'JiangNan Spring.mp4',
+                    lyrics: [
+                        { text: '江南春 唐·杜牧', startTime: 0, endTime: 7 },
+                        { text: '千里莺啼绿映红', startTime: 8, endTime: 12 },
+                        { text: '水村山郭酒旗风', startTime: 13, endTime: 22 },
+                        { text: '南朝四百八十四', startTime: 23, endTime: 29 },
+                        { text: '多少楼台烟雨中', startTime: 30, endTime: 39 },
+                        { text: '【译文】', startTime: 40, endTime: 47 },
+                        { text: '千里江南到处黄莺啼叫', startTime: 48, endTime: 52 },
+                        { text: '绿树和红花交相辉映', startTime: 53, endTime: 56 },
+                        { text: '依山傍水的村庄和城镇', startTime: 57, endTime: 60 },
+                        { text: '处处都有酒旗在随风舞动', startTime: 61, endTime: 64 },
+                        { text: '当年南朝在这里建造了那么多的寺庙楼台', startTime: 65, endTime: 70 },
+                        { text: '如今大多掩映在这朦胧的烟雨之中', startTime: 71, endTime: 75 }
+
+                    ],
+                    currentLyricIndex: -1,
+                    currentTime: 0,
+                    editorContent: '',
+                    selectFont:'',
+                    fontOptions:[
+                        'default',
+                        '宋体','微软雅黑','楷体',
+                        'Ubuntu','Arial','sans-serif',
+                        'Ubuntu Mono','Courier New','Courier',
+                        'monospace','Arial','Helvetica',
+                        'sans-serif','Courier New','Courier',
+                        'monospace','Georgia','serif','Lucida Sans Unicode',
+                        'Lucida Grande', 'sans-serif','Tahoma','Geneva',
+                        'sans-serif','Times New Roman','Times',
+                        'serif','Trebuchet MS','Helvetica',
+                        'sans-serif','Verdana','Geneva','sans-serif'
+                    ],
+                    customColor:'#000000',
+                    comments: []
+                };
+            },
+
+            mounted(){
+                this.initPlayer();
+            },
+
+            methods:{
+                //音乐播放器相关方法
+                 initPlayer() {
+                    const media = this.$refs.media;
+                    
+                    media.addEventListener('timeupdate', () => {
+                        this.currentTime = media.currentTime;
+                        this.updateCurrentLyric();
+                    });
+                    
+                    media.addEventListener('play', () => {
+                        if (media.currentTime === 0) {
+                            this.currentLyricIndex = -1;
+                        }
+                    });
+                },
+                
+                updateCurrentLyric() {
+                    for (let i = 0; i < this.lyrics.length; i++) {
+                        const lyric = this.lyrics[i];
+                        if (this.currentTime >= lyric.startTime && this.currentTime <= lyric.endTime) {
+                            this.currentLyricIndex = i;
+                            return;
+                        }
+                    }
+                    this.currentLyricIndex = -1;
+                },
+                
+                jumpToLyric(time) {
+                    this.$refs.media.currentTime = time;
+                    this.$refs.media.play();
+                },
+                
+                jumpToTime(time) {
+                    this.$refs.media.currentTime = time;
+                    this.$refs.media.play();
+                },
+                
+                formatTime(seconds) {
+                    const mins = Math.floor(seconds / 60);
+                    const secs = Math.floor(seconds % 60);
+                    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                },
+
+                //富文本编辑器方法
+                execCommand(name, args = null){
+                    this.$refs.editor.focus();
+                    document.execCommand(name, false, args);
+                },
+
+                changeFont(){
+                    if(this.selectFont){
+                        this.$refs.editor.focus();
+                        document.execCommand('fontName',false,this.selectFont);
+                    }
+                },
+                applyCustomColor(){
+                    if(this.customColor){
+                        this.$refs.editor.focus();
+                        document.execCommand('styleWithCSS', false, true);
+                        document.execCommand('foreColor',false,this.customColor);
+                    }
+                },
+
+                //评论区方法
+                insertTimestamp() {
+                    this.$refs.editor.focus();
+                    const timestamp = `[${this.formatTime(this.currentTime)}] `;
+                    document.execCommand('insertText', false, timestamp);
+                },
+                
+                submitComment() {
+                    // 创建新评论对象
+                    const content = this.$refs.editor.innerHTML;
+
+                    const newComment = {
+                        time: this.currentTime,
+                        content: content,
+                        id: Date.now()  
+                    };
+                    
+                    this.comments.unshift(newComment);
+                    
+                    this.$refs.editor.innerHTML = '';
+                    this.editorContent = '';
+                    
+                    this.$nextTick(() => {
+                        const displayArea = document.querySelector('.comments');
+                        displayArea.scrollTop = 0;
+                    });
+                },
+
+                updateContent(){
+                    this.editorContent = this.$refs.editor.innerHTML;
+                },
+
+            }
+        });
+    </script>
+</body>
+</html>
